@@ -1,26 +1,17 @@
 name: 防污染DNS-大陆
 desc: 仅覆写 DNS，保留机场自带分流；fake-ip + 国内加密 DoH
-
 # 说明：作为 Override 启用，挂在机场配置之上。机场的分流规则与策略组保持不变，只替换 DNS。
-# 台湾自用 / 想测漏干净：把下面 nameserver 换成 https://1.0.0.1/dns-query（Cloudflare）。
-#   注意：境外 DoH 仅限大陆以外使用，大陆用会导致节点解析失败、无法连接。
 
 dns:
   enable: true
   ipv6: false
-  # Stash 默认即为 fake-ip；以下两键若你的 Stash 版本不识别可删除，不影响 fake-ip 生效。
   enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.1/16
-
-  # 用 #!replace 整段替换机场自带值，避免数组前插导致的 DNS 混用
   default-nameserver: #!replace
     - 223.5.5.5
     - 119.29.29.29
-
   nameserver: #!replace
-    - https://doh.pub/dns-query
-    - https://dns.alidns.com/dns-query
-
+    - https://127.0.0.1/dns-query
   fake-ip-filter: #!replace
     - 'geosite:private'
     - 'geosite:cn'

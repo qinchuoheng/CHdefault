@@ -1,0 +1,158 @@
+# Clash Verge (mihomo 内核) 配置 — 由 Shadowrocket 版移植
+# 面向中国大陆日常使用 / 抗污染 + 抗泄露平衡版
+# 关键改进：enhanced-mode: fake-ip —— 走代理的域名不在本地解析，结构上优于 SR。
+# 用法见文末「使用说明」。
+
+mixed-port: 7890
+mode: rule
+log-level: info
+ipv6: false
+allow-lan: false
+unified-delay: true
+tcp-concurrent: true
+find-process-mode: 'off'
+global-client-fingerprint: chrome
+
+# ===== 订阅 =====
+# 把你的机场订阅地址填到下面 url 处；节点会自动并入下面的策略组。
+proxy-providers:
+  Airport:
+    type: http
+    url: "在这里填入你的订阅链接"
+    interval: 3600
+    path: ./providers/airport.yaml
+    health-check:
+      enable: true
+      url: https://www.gstatic.com/generate_204
+      interval: 300
+
+proxies: []
+
+proxy-groups:
+  - name: 节点选择
+    type: select
+    include-all: true        # 自动并入所有订阅节点
+    proxies:
+      - 自动选择
+      - DIRECT
+  - name: 自动选择
+    type: url-test
+    include-all: true
+    url: https://www.gstatic.com/generate_204
+    interval: 300
+    tolerance: 50
+
+# ===== DNS（关键，对应 SR 的 dns-server 段）=====
+dns:
+  enable: true
+  listen: 0.0.0.0:1053
+  ipv6: false
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  # 这些域名不走 fake-ip，按真实 IP 解析（本地服务、NTP、登录探测等）
+  fake-ip-filter:
+    - 'geosite:private'
+    - 'geosite:cn'                 # 国内域名按真实 IP 解析，利于国内 CDN 就近
+    - '+.lan'
+    - '+.local'
+    - 'localhost.ptlogin2.qq.com'
+    - 'time.*.com'
+    - 'ntp.*.com'
+  # 仅用于解析下面 DoH 的【域名本身】，必须是纯 IP（bootstrap）
+  default-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+
+  # —— 直连/国内域名的加密解析 ——
+  # 走代理的域名用 fake-ip、在节点远端解析，不经过这里。
+  # 【大陆朋友用】保持下面这两行（CN DoH）。
+  nameserver:
+    - https://223.5.5.5/dns-query      # AliDNS（IP 形式，免 bootstrap）
+    - https://doh.pub/dns-query        # 腾讯 DNSPod
+  # 解析"代理节点的域名"用国内 DoH（防止递归绕回自身）
+  proxy-server-nameserver:
+    - https://223.5.5.5/dns-query
+    - https://doh.pub/dns-query
+
+  # 【若这份是给大陆以外（如台湾）自己用，想让测漏站显示干净】
+  # 把上面 nameserver 与 proxy-server-nameserver 改成境外 DoH：
+  #   nameserver:
+  #     - https://1.1.1.1/dns-query
+  #     - https://dns.google/dns-query
+  #   proxy-server-nameserver:
+  #     - https://1.1.1.1/dns-query
+  # 注意：此时直连/国内解析会走境外 DNS，国内 CDN 可能不就近、个别站变慢。
+
+# ===== 规则集 =====
+# 注：OpenAI / Claude 的路径请首次加载后到 Verge 里看是否拉取成功（可能改过名）。
+rule-providers:
+  Lan:         { type: http, behavior: classical, format: yaml, interval: 86400, path: ./ruleset/Lan.yaml,         url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Lan/Lan.yaml" }
+  Advertising: { type: http, behavior: classical, format: yaml, interval: 86400, path: ./ruleset/Advertising.yaml, url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Advertising/Advertising.yaml" }
+  Google:      { type: http, behavior: classical, format: yaml, interval: 86400, path: ./ruleset/Google.yaml,      url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Google/Google.yaml" }
+  YouTube:     { type: http, behavior: classical, format: yaml, interval: 86400, path: ./ruleset/YouTube.yaml,     url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/YouTube/YouTube.yaml" }
+  Telegram:    { type: http, behavior: classical, format: yaml, interval: 86400, path: ./ruleset/Telegram.yaml,    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Telegram/Telegram.yaml" }
+  Twitter:     { type: http, behavior: classical, format: yaml, interval: 86400, path: ./ruleset/Twitter.yaml,     url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Twitter/Twitter.yaml" }
+  Facebook:    { type: http, behavior: classical, format: yaml, interval: 86400, path: ./ruleset/Facebook.yaml,    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Facebook/Facebook.yaml" }
+  Instagram:   { type: http, behavior: classical, format: yaml, interval: 86400, path: ./ruleset/Instagram.yaml,   url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Instagram/Instagram.yaml" }
+  Netflix:     { type: http, behavior: classical, format: yaml, interval: 86400, path: ./ruleset/Netflix.yaml,     url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Netflix/Netflix.yaml" }
+  Disney:      { type: http, behavior: classical, format: yaml, interval: 86400, path: ./ruleset/Disney.yaml,      url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Disney/Disney.yaml" }
+  Spotify:     { type: http, behavior: classical, format: yaml, interval: 86400, path: ./ruleset/Spotify.yaml,     url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Spotify/Spotify.yaml" }
+  GitHub:      { type: http, behavior: classical, format: yaml, interval: 86400, path: ./ruleset/GitHub.yaml,      url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/GitHub/GitHub.yaml" }
+  OpenAI:      { type: http, behavior: classical, format: yaml, interval: 86400, path: ./ruleset/OpenAI.yaml,      url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/OpenAI/OpenAI.yaml" }
+  Claude:      { type: http, behavior: classical, format: yaml, interval: 86400, path: ./ruleset/Claude.yaml,      url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Claude/Claude.yaml" }
+  Global:      { type: http, behavior: classical, format: yaml, interval: 86400, path: ./ruleset/Global.yaml,      url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Global/Global.yaml" }
+  Apple:       { type: http, behavior: classical, format: yaml, interval: 86400, path: ./ruleset/Apple.yaml,       url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Apple/Apple.yaml" }
+  Microsoft:   { type: http, behavior: classical, format: yaml, interval: 86400, path: ./ruleset/Microsoft.yaml,   url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Microsoft/Microsoft.yaml" }
+  BiliBili:    { type: http, behavior: classical, format: yaml, interval: 86400, path: ./ruleset/BiliBili.yaml,    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/BiliBili/BiliBili.yaml" }
+  ChinaMax:    { type: http, behavior: classical, format: yaml, interval: 86400, path: ./ruleset/ChinaMax.yaml,    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/ChinaMax/ChinaMax.yaml" }
+
+# ===== 规则（顺序原则与 SR 版一致：域名规则在前，会触发解析的 IP 规则在末尾）=====
+rules:
+  # 局域网直连
+  - RULE-SET,Lan,DIRECT
+  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
+  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
+
+  # 广告拦截（不想要就把这行删掉）
+  - RULE-SET,Advertising,REJECT
+
+  # 境外服务走代理（域名规则，fake-ip 远端解析，不泄露不污染）
+  - RULE-SET,Google,节点选择
+  - RULE-SET,YouTube,节点选择
+  - RULE-SET,Telegram,节点选择
+  - RULE-SET,Twitter,节点选择
+  - RULE-SET,Facebook,节点选择
+  - RULE-SET,Instagram,节点选择
+  - RULE-SET,Netflix,节点选择
+  - RULE-SET,Disney,节点选择
+  - RULE-SET,Spotify,节点选择
+  - RULE-SET,GitHub,节点选择
+  - RULE-SET,OpenAI,节点选择
+  - RULE-SET,Claude,节点选择
+  - RULE-SET,Global,节点选择
+
+  # 测漏 / VPN 信息站走代理（注意：会让这些站测出"干净"，是假阴性；
+  # 要诚实测漏请用一个不在规则里的随机境外域名，看它本地还是远端解析）
+  - DOMAIN-SUFFIX,dnsleaktest.com,节点选择
+  - DOMAIN-SUFFIX,ipleak.net,节点选择
+  - DOMAIN-SUFFIX,browserleaks.com,节点选择
+  - DOMAIN-SUFFIX,whoer.net,节点选择
+
+  # 国内服务直连（域名规则）
+  - RULE-SET,Apple,DIRECT
+  - RULE-SET,Microsoft,DIRECT
+  - RULE-SET,BiliBili,DIRECT
+  - RULE-SET,ChinaMax,DIRECT
+
+  # 兜底：CN 的 IP 直连（本配置唯一会触发本地解析的规则），其余走代理
+  - GEOIP,CN,DIRECT
+  - MATCH,节点选择
+
+# ============== 使用说明 ==============
+# 1) 把上面 proxy-providers 的 url 改成你的机场订阅链接，保存。
+# 2) 在 Clash Verge 里把本文件作为「配置(Profile)」导入，启用。
+# 3) 想全系统接管（避免不走代理的程序漏出流量）：在 Verge 里打开「Tun 模式」。
+#    —— 这一点对防泄露很重要：仅系统代理时，部分程序的 DNS/连接会绕过本配置。
+# 4) DNS 取向见上方 dns 段的注释：大陆用 CN DoH，大陆以外想测试干净就换境外 DoH。
